@@ -2,7 +2,7 @@
 
 import serial
 import sqlite3
-import time
+import datetime
 
 try:
     # Connect to serial
@@ -18,18 +18,17 @@ try:
     ser.close()
 
     # Connect to the database
-    con = sqlite3.connect("/home/blakeknedler/Documents/ECE_331/temperature-logger/data.db")
+    con = sqlite3.connect("/var/www/html/data.db")
     cur = con.cursor()
 
     # Make new table if needed
-    cur.execute("create table if not exists temperature (Date text, Time text, Temp real)")
+    cur.execute("create table if not exists temperature (DateTime text, Temp real)")
 
     # Get time and date
-    date = time.strftime('%F')
-    time = time.strftime('%T')
+    dateTime = datetime.datetime.now().isoformat()
 
     # Insert into database
-    cur.execute("Insert into temperature (Date, Time, Temp) values (?, ?, ?)", (date, time, temp))
+    cur.execute("Insert into temperature (DateTime, Temp) values (?, ?)", (dateTime, temp))
     con.commit()
 
 except:

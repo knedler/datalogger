@@ -1,0 +1,246 @@
+<!DOCTYPE html> 
+<!-- File taken from Sheaff modified for single data set-->
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <META http-equiv="refresh" content="600">
+    <script type="text/javascript" src="Chart.min.js"></script> 
+    <script type="text/javascript" src="chartjs-plugin-annotation.min.js"></script> 
+    <script type="text/javascript" src="moment-with-locales.min.js"></script> 
+    <script type="text/javascript" src="chartjs-adapter-moment.min.js"></script> 
+    <script type="text/javascript" src="hammer.min.js"></script> 
+    <script type="text/javascript" src="chartjs-plugin-zoom.min.js"></script> 
+    <link rel="stylesheet" type="text/css" href="jquery.mobile.min.css" />
+    <script type="text/javascript" src="jquery.min.js"></script> 
+    <script type="text/javascript" src="jquery.mobile.min.js"></script> 
+    <style> 
+        #canvas1 { background-color: #f8f8f8; } 
+    </style>
+</head>
+<body bgcolor="#6f6f6f">
+    <div data-role="page" id="page1">
+        <div role="main" class="ui-content">
+            <div class="ui-grid-solo">
+                <div id="charta" class="ui-block-a ui-block-span2">
+                    <script> 
+                        var canvas = document.createElement('canvas'); 
+                        var e = document.getElementById("charta"); 
+                        canvas.id = "canvas1"; 
+                        canvas.width = e.offsetWidth; 
+                        canvas.height = 600; 
+                        canvas.style.zIndex = 8; 
+                        canvas.style.position = "relative"; 
+                        e.appendChild(canvas); 
+                    </script> 
+                </div>
+            </div>
+        </div>
+    </div>
+    <script> 
+        const chartAreaBorder = { 
+            id: 'chartAreaBorder', 
+            beforeDraw(chart, args, options) { 
+                const { ctx, chartArea: { left, top, width, height }} = chart; 
+                ctx.save(); 
+                ctx.strokeStyle = options.borderColor; 
+                ctx.lineWidth = options.borderWidth; 
+                ctx.setLineDash(options.borderDash || []); 
+                ctx.lineDashOffset = options.borderDashOffset; 
+                ctx.strokeRect(left, top, width, height); 
+                ctx.restore(); 
+            } 
+        }; 
+
+        function chart_setup(setup) { 
+            var chart = new Chart(setup.ctx, { 
+                type: 'line', 
+                plugins: [chartAreaBorder], 
+                options: { 
+                    layout: { padding: 10 }, 
+                    responsive: true, 
+                    responsiveAnimationDuration: 0, 
+                    animation: { duration: 0 }, 
+                    hover: { animationDuration: 400 }, 
+                    scales: { 
+                        x: { 
+                            type: "time", 
+                            display: true, 
+                            ticks: { autoSkip: true, autoSkipPadding: 50 }, 
+                            time: { 
+                                displayFormats: { 
+                                    hour: 'dd HH:mm', 
+                                    minute: 'HH:mm', 
+                                    second: 'HH:mm:ss' 
+                                } 
+                            }, 
+                            title: { display: true, text: "Local Date & Time" }, 
+                            grid: { 
+                                tickLength: 4, 
+                                borderWidth: 2, 
+                                color: 'LightGray', 
+                                boarderColor: 'Gray', 
+                                lineWidth: 1 
+                            },
+				suggestedMin: new Date().getTime() - (24 * 60 * 60 * 1000),
+				suggestedMax: new Date().getTime()
+                        }, 
+                        y: { 
+                            display: true, 
+                            title: { text: setup.ylabel, display: true }, 
+                            grid: { 
+                                tickLength: 4, 
+                                borderWidth: 2, 
+                                color: 'LightGray', 
+                                boarderColor: 'Gray', 
+                                lineWidth: 1 
+                            },
+				suggestedMin: 60,
+				suggestedMax: 80
+                        } 
+                    }, 
+                    tooltips: { enabled: false }, 
+                    plugins: { 
+                        chartAreaBorder: { borderColor: 'Gray', borderWidth: 2, borderDash: [0, 0], borderDashOffset: 0 }, 
+                        zoom: { 
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', 
+                                onZoomComplete: (chart) => { 
+                                    var jsondata = $.ajax({ 
+                                        url: 'sql.php', 
+                                        type: 'POST', 
+                                        data: jQuery.param({ 
+                                            min: (chart.chart.scales['x'].min - (4 * 60 * 60 * 1000)) / 1000, 
+                                            max: (chart.chart.scales['x'].max - (4 * 60 * 60 * 1000)) / 1000 
+                                        }), 
+                                        contentType: 'application/x-www-form-urlencoded; charset=utf-8', 
+                                        dataType: 'json' 
+                                    }).done(function(results) { 
+                                        while (chart.chart.data.datasets.shift() != undefined); 
+                                        setup.datasets.forEach(function(d, i) { 
+                                            chart.chart.data.datasets.push({ 
+                                                label: setup.labels[i], 
+                                                tension: 0, 
+                                                pointRadius: 0, 
+                                                borderColor: setup.colors[i], 
+                                                borderWidth: 2, 
+                                                cubicInterpolationMode: "monotone", 
+                                                data: results[d], 
+                                                fill: false 
+                                            }); 
+                                        }); 
+                                        chart.chart.update(); 
+                                    }); 
+                                }, 
+                            }, 
+                            pan: { 
+                                onPanComplete: (chart) => { 
+                                    var jsondata = $.ajax({ 
+                                        url: 'sql.php', 
+                                        type: 'POST', 
+                                        data: jQuery.param({ 
+                                            min: (chart.chart.scales['x'].min - (4 * 60 * 60 * 1000)) / 1000, 
+                                            max: (chart.chart.scales['x'].max - (4 * 60 * 60 * 1000)) / 1000 
+                                        }), 
+                                        contentType: 'application/x-www-form-urlencoded; charset=utf-8', 
+                                        dataType: 'json', 
+                                    }).done(function(results) { 
+                                        while (chart.chart.data.datasets.shift() != undefined); 
+                                        setup.datasets.forEach(function(d, i) { 
+                                            chart.chart.data.datasets.push({ 
+                                                label: setup.labels[i], 
+                                                tension: 0, 
+                                                pointRadius: 0, 
+                                                borderColor: setup.colors[i], 
+                                                borderWidth: 2, 
+                                                cubicInterpolationMode: "monotone", 
+                                                data: results[d], 
+                                                fill: false 
+                                            }); 
+                                        }); 
+                                        chart.chart.update(); 
+                                    }); 
+                                }, 
+                                enabled: true 
+                            } 
+                        }, 
+                        title: { display: true, text: setup.title }, 
+                        legend: { 
+                            display: setup.legendtf, 
+                            position: 'top', 
+                            labels: { boxWidth: 1 }, 
+                            onClick: (e, li, l) => { 
+                                chart.data.datasets.forEach((dataset) => { 
+                                    if (dataset.label == li.text) { 
+                                        if (dataset.hidden == true) { dataset.hidden = false; } 
+                                        else { dataset.hidden = true; } 
+                                        chart.update(); 
+                                    } 
+                                }) 
+                            } 
+                        } 
+                    } 
+                } 
+            }); 
+
+            // Add data 
+            setup.datasets.forEach(function(d, i) { 
+                chart.data.datasets.push({ 
+                    label: setup.labels[i], 
+                    tension: 0, 
+                    pointRadius: 0, 
+                    borderColor: setup.colors[i], 
+                    borderWidth: 2, 
+                    cubicInterpolationMode: "monotone", 
+                    data: setup.data[d], 
+                    fill: false 
+                }); 
+            }); 
+
+            return chart; 
+        } 
+
+        function plot(results) { 
+            var ctx1 = document.getElementById("canvas1").getContext('2d'); 
+            Chart.defaults.font.size = 16; 
+            Chart.defaults.color = "#000000"; 
+
+            chart1_setup = { 
+                ctx: ctx1, 
+                data: results, 
+                ylabel: "Temperature °F", 
+                title: "Temperature", 
+                legendtf: true, 
+                labels: ["Temp"], 
+                datasets: ["mw_temp"], 
+                colors: ["red"]
+            }; 
+
+            var canvas1 = chart_setup(chart1_setup); 
+            canvas1.update(); 
+
+            // Resize 
+            window.addEventListener('resize', resizeCanvas, false); 
+
+            function resizeCanvas() { 
+                var e = document.getElementById("charta"); 
+                ctx1.width = e.offsetWidth; 
+                canvas1.resize(); 
+            } 
+        } 
+
+        var n = moment().subtract(4, 'hours').valueOf(); 
+        var p = moment().subtract(28, 'hours').valueOf(); 
+        n = n / 1000; 
+        p = p / 1000; 
+
+        var jsondata = $.ajax({ 
+            url: 'sql.php', 
+            type: 'POST', 
+            data: jQuery.param({ min: p, max: n }), 
+            contentType: 'application/x-www-form-urlencoded; charset=utf-8', 
+            dataType: 'json', 
+        }).done(function(results) { 
+            plot(results); 
+        });
+    </script> 
+</body>
+</html>
