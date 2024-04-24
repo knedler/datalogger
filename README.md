@@ -26,6 +26,7 @@ To run this project, you'll need:
 In order to get the python script to run every min a cron job must be added.
 
 `$ crontab -e`
+
 `* * * * * /usr/bin/python3 /path/to/your/getTemp.py`
 
 This will add a new job to run the script.
